@@ -8,14 +8,14 @@ from nltk.tokenize import wordpunct_tokenize
 from nltk.stem import WordNetLemmatizer
 from tqdm import tqdm
 
-class Scraper:
+class WikiScraper:
     def __init__(self):
         self.porter = PorterStemmer()
         self.visited = dict()
         self.wordnet = WordNetLemmatizer()
 
 
-    def get_n_random(self, link='https://en.wikipedia.org/wiki/Pozna%C5%84_University_of_Technology', num_documents=10, pbar=None):
+    def get_n_random(self, link='https://en.wikipedia.org/wiki/Pozna%C5%84_University_of_Technology', num_documents=200, pbar=None):
         if len(self.visited) >= num_documents:
             return self.visited
 
@@ -29,16 +29,15 @@ class Scraper:
         random.shuffle(child_links)
 
         if pbar is None:
-            pbar = tqdm(total=num_documents, desc="Processing links", unit="link")
+            pbar = tqdm(total=num_documents, desc="Downloading links", unit="link")
 
         pbar.update(1)
 
         for child_link in child_links:
-            if child_link['href'] not in self.visited:
+            if child_link['href'] not in self.visited and len(self.visited) < num_documents:
                 self.visited[child_link['href']] = ''.join(t.getText() for t in parsed.select('p'))
                 
                 self.get_n_random(child_link, num_documents, pbar)
-                break
 
         if pbar.total == pbar.n:
             pbar.close()  # Close the progress bar when it's done
@@ -56,14 +55,18 @@ class Scraper:
     def save_to_db(self, db = 23):
         assert self.visited is not None
         data = []
+        pbar = tqdm(total=len(self.visited), desc="Processing tokens", unit="link")
+
         for key, value in self.visited.items():
             data.append((key, self.tokenize_text(value)))
+            pbar.update(1)
         
         df = pd.DataFrame(data, columns=['url', 'tokens'])
         df.to_csv('data.csv', index=False)
+        pbar.close()
 
 if __name__ == '__main__':
-    scraper = Scraper()
+    scraper = WikiScraper()
     scraper.get_n_random()
     visited = scraper.visited
     random_key = random.choice(list(visited.keys()))
