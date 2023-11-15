@@ -14,6 +14,15 @@ class WikiScraper:
         self.visited = dict()
         self.wordnet = WordNetLemmatizer()
 
+    @staticmethod
+    def is_article_link(url):
+        article_pattern = re.compile(r'^/wiki/[^:]+$')
+        return bool(article_pattern.match(url))
+    
+    def get_content(self, link):
+        response = requests.get(link)
+        parsed = bs4.BeautifulSoup(response.text)
+        return ''.join(t.getText() for t in parsed.select('p'))
 
     def get_n_random(self, link='https://en.wikipedia.org/wiki/Pozna%C5%84_University_of_Technology', num_documents=200, pbar=None):
         if len(self.visited) >= num_documents:
@@ -21,6 +30,7 @@ class WikiScraper:
 
         if len(self.visited) == 0:
             response = requests.get(link)
+            link = link.replace('https://en.wikipedia.org', '')
         else:
             response = requests.get("https://en.wikipedia.org" + link['href'])
         
@@ -34,13 +44,16 @@ class WikiScraper:
         pbar.update(1)
 
         for child_link in child_links:
-            if child_link['href'] not in self.visited and len(self.visited) < num_documents:
-                self.visited[child_link['href']] = ''.join(t.getText() for t in parsed.select('p'))
+            if child_link['href'] not in self.visited and len(self.visited) < num_documents and self.is_article_link(child_link['href']):
+                if len(self.visited) == 0:
+                    self.visited[link] = ''.join(t.getText() for t in parsed.select('p'))
+                else:
+                    self.visited[link['href']] = ''.join(t.getText() for t in parsed.select('p'))
                 
                 self.get_n_random(child_link, num_documents, pbar)
 
         if pbar.total == pbar.n:
-            pbar.close()  # Close the progress bar when it's done
+            pbar.close()
 
     def tokenize_text(self, text):
         tokens = wordpunct_tokenize(text)
@@ -72,4 +85,3 @@ if __name__ == '__main__':
     random_key = random.choice(list(visited.keys()))
     random_value = visited[random_key]
     scraper.save_to_db()
-        
