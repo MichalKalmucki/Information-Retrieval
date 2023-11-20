@@ -25,5 +25,6 @@ def main():
         print(get_ranking(link, scraper, ranker))
         print('-----------------------------------')
 
+
 if __name__ == '__main__':
     main()

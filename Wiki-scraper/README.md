@@ -21,3 +21,7 @@ Simple module loading links.txt file with links from wikipedia to find closest a
 - Run main.py and get result printed out on console <br>
   ![result image](assets/result_img.png)
 - If data.csv is not yet created execution of a program might take a while, but after that generating rating is much faster
+
+### Scraped data
+
+DataVisualize notebook shows briefly some facts about downloaded data
