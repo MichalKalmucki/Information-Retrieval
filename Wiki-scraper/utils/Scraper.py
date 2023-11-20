@@ -7,6 +7,7 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import wordpunct_tokenize
 from nltk.stem import WordNetLemmatizer
 from tqdm import tqdm
+from queue import LifoQueue
 
 class WikiScraper:
     def __init__(self):
@@ -16,44 +17,48 @@ class WikiScraper:
 
     @staticmethod
     def is_article_link(url):
-        article_pattern = re.compile(r'^/wiki/[^:]+$')
-        return bool(article_pattern.match(url))
-    
+        if ':' in url:
+            return False
+        return True
+        
     def get_content(self, link):
         response = requests.get(link)
-        parsed = bs4.BeautifulSoup(response.text)
+        parsed = bs4.BeautifulSoup(response.text, features="lxml")
         return ''.join(t.getText() for t in parsed.select('p'))
 
-    def get_n_random(self, link='https://en.wikipedia.org/wiki/Pozna%C5%84_University_of_Technology', num_documents=200, pbar=None):
-        if len(self.visited) >= num_documents:
-            return self.visited
+    def get_n_random(self, link='https://en.wikipedia.org/wiki/Pozna%C5%84_University_of_Technology', num_documents=1500):
+        queue = LifoQueue()
+        pbar = tqdm(total=num_documents, desc="Downloading links", unit="link")
+        response = requests.get(link)
+        link = link.replace('https://en.wikipedia.org', '')
 
-        if len(self.visited) == 0:
-            response = requests.get(link)
-            link = link.replace('https://en.wikipedia.org', '')
-        else:
-            response = requests.get("https://en.wikipedia.org" + link['href'])
-        
-        parsed = bs4.BeautifulSoup(response.text)
+        parsed = bs4.BeautifulSoup(response.text, features="lxml")
         child_links = parsed.find_all('a', attrs={'href': re.compile(r'^/wiki')})
-        random.shuffle(child_links)
 
-        if pbar is None:
-            pbar = tqdm(total=num_documents, desc="Downloading links", unit="link")
-
+        self.visited[link] = ''.join(t.getText() for t in parsed.select('p'))
+        
         pbar.update(1)
-
+        random.shuffle(child_links)
+        
         for child_link in child_links:
             if child_link['href'] not in self.visited and len(self.visited) < num_documents and self.is_article_link(child_link['href']):
-                if len(self.visited) == 0:
-                    self.visited[link] = ''.join(t.getText() for t in parsed.select('p'))
-                else:
-                    self.visited[link['href']] = ''.join(t.getText() for t in parsed.select('p'))
-                
-                self.get_n_random(child_link, num_documents, pbar)
+                queue.put(child_link)
+        
+        while not queue.empty() and len(self.visited) < num_documents:
+            child_link = queue.get()
+            response = requests.get("https://en.wikipedia.org" + child_link['href'])
+            parsed = bs4.BeautifulSoup(response.text, features="lxml")
+            self.visited[child_link['href']] = ''.join(t.getText() for t in parsed.select('p'))
 
-        if pbar.total == pbar.n:
-            pbar.close()
+            child_links = parsed.find_all('a', attrs={'href': re.compile(r'^/wiki')})
+            random.shuffle(child_links)
+
+            for child_link in child_links:
+                if (child_link['href'] not in self.visited) and (len(self.visited) < num_documents) and (self.is_article_link(child_link['href'])):
+                    queue.put(child_link)
+            
+            pbar.update(1)
+
 
     def tokenize_text(self, text):
         tokens = wordpunct_tokenize(text)
@@ -77,11 +82,3 @@ class WikiScraper:
         df = pd.DataFrame(data, columns=['url', 'tokens'])
         df.to_csv('data.csv', index=False)
         pbar.close()
-
-if __name__ == '__main__':
-    scraper = WikiScraper()
-    scraper.get_n_random()
-    visited = scraper.visited
-    random_key = random.choice(list(visited.keys()))
-    random_value = visited[random_key]
-    scraper.save_to_db()
