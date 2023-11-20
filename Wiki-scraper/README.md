@@ -1,3 +1,7 @@
+## Authors:
+- Michał Kałmucki
+- Dominik Ludwiczak
+
 ## The general task is to create a system that will recommend similar articles based on the previously visited articles
 
 ### Project contains 3 main modules:
