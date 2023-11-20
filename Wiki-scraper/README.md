@@ -16,8 +16,8 @@ Simple module loading links.txt file with links from wikipedia to find closest a
 
 ### Execution
 
-- Put desired links seperated by new line character into links.txt file in main directory as shown on example below
+- Put desired links seperated by new line character into links.txt file in main directory as shown on example below <br>
   ![links Image](assets/links_img.png)
-- Run main.py and get result printed out on console
+- Run main.py and get result printed out on console <br>
   ![result image](assets/result_img.png)
 - If data.csv is not yet created execution of a program might take a while, but after that generating rating is much faster
