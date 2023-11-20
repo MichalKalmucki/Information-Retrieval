@@ -11,8 +11,3 @@ class LinkLoader:
                 links.append(line.strip())
 
         return links
-    
-if __name__ == '__main__':
-    loader = LinkLoader('utils/links.txt')
-    links = loader.load()
-    print(links)
